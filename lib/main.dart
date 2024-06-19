@@ -69,20 +69,37 @@ class _DownloadPageState extends State<DownloadPage> {
 
         var status = await Permission.storage.status;
         if (status.isGranted) {
-          final directory = await getExternalStorageDirectory();
-          final filePath = '${directory?.path}/$fileUrl';
+          // Get the external storage directory
+          Directory? directory = Platform.isAndroid
+              ? await getExternalStorageDirectory()
+              : await getApplicationDocumentsDirectory();
 
-          final fileResponse = await http.get(Uri.parse('http://192.168.1.13:5000/$fileUrl'));
-          if (fileResponse.statusCode == 200) {
-            final file = File(filePath);
-            await file.writeAsBytes(fileResponse.bodyBytes);
+          print("Director is : ${directory}");
+          print("Director path is : ${directory?.path}");
+          print("Director uri is : ${directory?.uri}");
 
-            setState(() {
-              _message = 'Download successful! File saved at: $filePath';
-            });
+          if (directory != null) {
+            print("null directory");
+            String filePath = '${directory.path}/$fileUrl';
+
+            final fileResponse = await http.get(Uri.parse('http://192.168.1.13:5000/downloads/$fileUrl'));
+            print("FILE RESPONSE : ${fileResponse}");
+            print("FILE RESPONSE status code: ${fileResponse.statusCode}");
+            if (fileResponse.statusCode == 200) {
+              final file = File(filePath);
+              await file.writeAsBytes(fileResponse.bodyBytes);
+
+              setState(() {
+                _message = 'Download successful! File saved at: $filePath';
+              });
+            } else {
+              setState(() {
+                _message = 'Error downloading file: ${fileResponse.reasonPhrase}';
+              });
+            }
           } else {
             setState(() {
-              _message = 'Error downloading file: ${fileResponse.reasonPhrase}';
+              _message = 'Could not access external storage.';
             });
           }
         } else {
@@ -120,6 +137,7 @@ class _DownloadPageState extends State<DownloadPage> {
             onPressed: () {
               final url = _controller.text;
               if (url.isNotEmpty) {
+                print("button pressed, request sent");
                 _downloadSong(url);
               }
             },
